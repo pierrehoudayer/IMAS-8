@@ -1,0 +1,4 @@
+1st column: radial order
+2nd, 3rd, 4th columns: dimensionless radial, dipole, and quadrupole mode frequencies (nu_nl / 2Dnu)
+5th, 6th, 7th columns: dimensionless uncertainties on radial, dipole, and quadrupole mode frequencies (dnu_nl / 2Dnu)
+-9.9999 means no data available
