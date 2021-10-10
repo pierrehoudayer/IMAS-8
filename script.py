@@ -56,9 +56,10 @@ def plot_diagnostic(f, dk_f, dk_f_cov, show=False) :
 #============================================================================#
 if __name__=='__main__':
     # Name of the file containing the frequencies
-    Y_char = 'Y253'
+    """Y_char = 'Y253'
     M_char = '1.00Msun'
-    fname  = 'Yveline/' + M_char + '_' + Y_char + '_FREQ_SCALED.csv'
+    fname  = 'Yveline/' + M_char + '_' + Y_char + '_FREQ_SCALED.csv'"""
+    fname  = 'freq1.csv'
     
     # Maximum degree (<4) and radial orders considered
     l_max = 2
