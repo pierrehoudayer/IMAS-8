@@ -35,7 +35,7 @@ def dk(f, f_cov, k) :
         a = [1,-2,1]
     q = len(a)//2
     dimA = len(f)
-    A = np.sum(np.diag(np.flip(a)[i]*np.ones(dimA-np.abs(i-q))/2**k,i-q) for i in range(len(a)))
+    A = sum(np.diag(np.flip(a)[i]*np.ones(dimA-np.abs(i-q))/2**k,i-q) for i in range(len(a)))
     dk_f     = pd.DataFrame(np.dot(A, f)[q:-q], index=f.index[q:-q], columns=f.columns)
     dk_f_cov = np.array([np.dot(np.dot(A,cov_l),A.T)[q:-q,q:-q] for cov_l in f_cov])
     return dk_f, dk_f_cov
