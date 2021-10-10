@@ -68,6 +68,45 @@ def HG07(f, a, b, τ, φ):
     This expression were also applied to the second differences fit in 
     Verma et al. (2014a, 2019) and adapted in Farnir et al. (2019)'''
     return (a*f) * np.exp(-b*f**2) * np.cos(2*np.pi*f*τ+φ)
+
+def arg_types(func):
+    'Argument types of func for prior construction'
+    if func == MT98:
+        return ['scale', 'depth', 'depth', 'phase']
+    if func == HG07:
+        return ['scale', 'scale', 'depth', 'phase']
+#============================================================================#
+
+
+
+#============================================================================#
+#                              POSTERIOR DEFINITION                          #
+#============================================================================#
+def log_prior_on_scale(par):
+    '''Return the Jeffrey's prior on scale'''
+    return -np.log(par)
+
+def log_prior_on_depth(par, m, std):
+    '''Return the Beta districution of mean m and standard deviation std'''
+    a =     m*(m*(1-m)/std**2-1)
+    b = (1-m)*(m*(1-m)/std**2-1)
+    return st.beta(a, b).logpdf(par)   
+
+def log_prior_on_phase(par):
+    '''Return the Jeffrey's prior on phase'''
+    return 0.0
+    
+def log_prior(func, *args):
+    types = arg_types(func)
+    logp = []
+    for kind, par in zip(types, args):
+        if kind == 'scale' :
+            logp.append(log_prior_on_scale(par))
+        if kind == 'depth' :
+            logp.append(log_prior_on_depth(par, 0.25, 0.1))
+        if kind == 'phase' :
+            logp.append(log_prior_on_phase(par))
+    return np.sum(logp)
 #============================================================================#
 
 
