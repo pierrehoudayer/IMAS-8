@@ -56,7 +56,12 @@ def plot_diagnostic(f, dk_f, dk_f_cov, show=False) :
 #============================================================================#
 #                                DIAGNOSTIC FIT                              #
 #============================================================================#
-...
+def HG07(f, a, b, τ, φ):
+    '''Expression of the frequency shift caused by the 2nd He ionisation
+    visible in Houdek & Gough (2007)
+    This expression were also applied to the second differences fit in 
+    Verma et al. (2014a, 2019) and adapted in Farnir et al. (2019)'''
+    return (a*f) * np.exp(-b*f**2) * np.cos(2*np.pi*f*τ+φ)
 #============================================================================#
 
 
