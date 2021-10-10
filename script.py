@@ -46,7 +46,7 @@ def plot_diagnostic(f, dk_f, dk_f_cov, show=False) :
     markers = ['v', 'd', '*']
     for f_l, dk_f_l, dk_f_cov_l, m_l, c_l in zip(f, dk_f, dk_f_cov, markers, colors) : 
         plt.errorbar(f.loc[dk_f[dk_f_l].index, f_l], dk_f[dk_f_l], yerr=np.diag(dk_f_cov_l)**0.5,
-                    fmt=m_l, color=c_l, alpha=0.3, label=dk_f_l)
+                    fmt=m_l, color=c_l, alpha=0.3, label=r"$\ell = "+f_l[-1]+"$")
     plt.legend()
     if show: plt.show()
 #============================================================================#
