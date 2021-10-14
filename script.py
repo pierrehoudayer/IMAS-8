@@ -27,13 +27,36 @@ rc('ytick', labelsize=15)
 
 
 #============================================================================#
-#                             DIAGNOSTIC ANALYSIS                            #
+#                             DIAGNOSTIC DEFINITION                          #
 #============================================================================#
+def read_freq(fname, l_max, n_min, n_max):
+    '''Return the frequencies contained in fname with 
+    l <= l_max, n_min <= n <= n_max'''
+    return pd.read_csv(fname, index_col=0, usecols=range(l_max+2), na_values=-99.9999).loc[n_min:n_max]
+
+def read_freq_cov(fname, l_max, n_min, n_max):
+    '''Return the covariance matrices (1 per degree)
+    contained in fname with l <= l_max, n_min <= n <= n_max'''
+    return np.array([
+        np.diag(pd.read_csv(fname, index_col=0, usecols=[0,4+l], na_values=-9.9999)
+            .loc[n_min:n_max].values.reshape((n_max-n_min+1))**2) for l in range(l_max+1)
+        ])
+
+def generate_freq_cov(sig, l_max, n_min, n_max):
+    '''Genrerate the covariance matrices (1 per degree)
+    using a single dispersion value (sig) with l <= l_max, n_min <= n <= n_max'''
+    return np.array([sig**2*np.eye(n_max-n_min+1) for l in range(l_max+1)])
+
+
 def dk(f, f_cov, k):
-    '''Return the k-th differences (and the associated covariance matrix) 
+    '''Return the k-th differences (and the corresponding covariance matrix) 
     of the frequencies f'''
     if k == 0:
-        return f, f_cov
+        dk_f = f.copy()
+        dk_f_cov = f_cov.copy()
+        for l in range(f.shape[1]):
+            dk_f['l = {}'.format(l)] -= f['l = {}'.format(l)].index.values + l/2
+        return dk_f, dk_f_cov
     if k == 1:
         a = [1,0,-1]       # Here we consider centered differences
     if k == 2:
@@ -93,23 +116,25 @@ def HG07(f, a, b, τ, φ):
 
 def V15(f, a, τ, φ):
     '''Expression of the frequency shift caused by the 2nd He ionisation
-    derived in Vrard et al. (2015)'''
+    used in Vrard et al. (2015)'''
     return a * np.cos(2*np.pi*f*τ+φ)
 
-def Inverse_polynomial(f, a, b, c, d):
-    '''Expression of the smooth component introduced in Houdek & Gough (2007)'''
-    return a + b*f**-1 + c*f**-2 + d*f**-3
+def Offset(f, a0):
+    '''Just an offset to model the smooth component'''
+    return a0
 
-def Asymptotic(k, f, a, b):
+def Inverse_polynomial(f, a0, a1, a2, a3):
+    '''Expression of the smooth component introduced in Houdek & Gough (2007)'''
+    return a0 + a1*f**-1 + a2*f**-2 + a3*f**-3
+
+def Asymptotic(k, f, a0, a1):
     '''Expression of the smooth component derived of the asymptotic 
     expansion presented in Houdek & Gough (2011). 
     For each k-th differences, we kept only the most important terms.'''
-    if k == 0:
-        return f + a*f**-1 + b*f**-3
     if k == 1:
-        return 1 + a*f**-2 + b*f**-4
+        return 1 + a0*f**-2 + a1*f**-4
     if k == 2:
-        return 0 + a*f**-3 + b*f**-5
+        return 0 + a0*f**-3 + a1*f**-5
 
 def arg_types(func):
     'Argument types of func for prior construction'
@@ -118,11 +143,13 @@ def arg_types(func):
     if func == M94b:
         return ['scale', 'depth', 'phase']
     if func == MT98:
-        return ['scale', 'depth', 'depth', 'phase']
+        return ['scale', 'scale', 'depth', 'phase']
     if func == HG07:
         return ['scale', 'scale', 'depth', 'phase']
     if func == V15:
         return ['scale', 'depth', 'phase']
+    if func == Offset:
+        return ['scale']
     if func == Inverse_polynomial:
         return ['scale', 'scale', 'scale', 'scale']
     if (func == Asymptotic or type(func) is types.LambdaType):
@@ -157,7 +184,7 @@ def first_guess(func):
         if kind == 'scale' :
             x0.append(0.1)
         if kind == 'depth' :
-            x0.append(0.25)
+            x0.append(0.3)
         if kind == 'phase' :
             x0.append(0.0)
     return np.array(x0)
@@ -170,7 +197,7 @@ def log_prior(func, *args):
         if kind == 'scale' :
             logp.append(log_prior_on_scale(par))
         if kind == 'depth' :
-            logp.append(log_prior_on_depth(par, 0.25, 0.2))
+            logp.append(log_prior_on_depth(par, 0.25, 0.1))
         if kind == 'phase' :
             logp.append(log_prior_on_phase(par))
     logp = np.sum(logp)
@@ -201,85 +228,97 @@ def log_posterior(f, dk_f, dk_f_cov, func, *args):
 #============================================================================#
 if __name__=='__main__':
     # Name of the file containing the frequencies
-    Y_char = 'Y253'
-    M_char = '1.00Msun'
-    fname  = 'Yveline/' + M_char + '_' + Y_char + '_FREQ_SCALED.csv'
-    # fname = 'freq1.csv'
+    fname = 'freq_model_RGB.csv'
     
     # Maximum degree (<4) and radial orders considered
     l_max = 2
-    n_min = 10
-    n_max = 40         
-    freq = pd.read_csv(fname, index_col=0, usecols=range(l_max+2)).loc[n_min:n_max]
+    n_min = 2
+    n_max = 20
+    
+    # We consider a particular set of radial order to avoid NaNs
+    # in the specific case of frequencies derived from data
+    if fname == 'freq_KIC_6277741_RGB.csv':
+        n_min = 5
+        n_max = 9 
+    if fname == 'freq_KIC_8379927_MS.csv':
+        n_min = 16
+        n_max = 26
+    
+    # We read the frequencies in fname
+    freq = read_freq(fname, l_max, n_min, n_max)
     
     # We define a covariance matrix 
-    # We naively asssume here that all degrees l share the same covariance matrix
-    sig = 1e-3    # This means sigma(\nu/\Delta\nu) ~ 0.001 for all frequencies
-    freq_cov = np.array([sig**2*np.eye(freq.shape[0]) for l in range(l_max+1)])
+    if 'KIC' in fname:
+        freq_cov = read_freq_cov(fname, l_max, n_min, n_max)
+    else:
+        # We naively asssume here that all degrees l share the same covariance matrix
+        sig = 1e-3    # This means sigma(\nu)/\Delta\nu ~ 0.001 for all frequencies
+        freq_cov = generate_freq_cov(sig, l_max, n_min, n_max)
     
     
     # Diagnostic considered (d^k nu = k^th differences)
-    k = 2
+    k = 0
     dk_freq, dk_freq_cov = dk(freq, freq_cov, k)
     
-    # Definition of a glitch model
+    
+    # Definition of a model
     glitch = HG07
     smooth = Inverse_polynomial
     # smooth = lambda f, a, b: Asymptotic(k, f, a, b)
     model  = lambda f, *params: glitch(f, *params[:glitch.__code__.co_argcount-1]) \
                               + smooth(f, *params[glitch.__code__.co_argcount-1:])
     
+    # Minimisation using curve_fit
+    all_freq = np.array(freq.loc[dk_freq.index]).flatten()
+    all_dk_freq = np.array(dk_freq).flatten()
+    all_dk_freq_cov = block_diag(*dk_freq_cov)
+    ordered = np.argsort(all_freq)
+    
     # Initial guess for our model
     x0 = np.concatenate((first_guess(glitch), first_guess(smooth)))
+    maxfev = int(1e5)    
+    Two_fits = True     # This option allows a first fit to determine a first guess
     
-    # Definition of a cost function
-    cost_func = lambda params: - log_prior(glitch, *params[:glitch.__code__.co_argcount-1]) \
-                                - log_prior(smooth, *params[glitch.__code__.co_argcount-1:]) \
-                                - log_likelihood(freq, dk_freq, dk_freq_cov, model, *params)
+    if Two_fits:
+        # Fit of the smooth component alone
+        p_smooth, p_smooth_cov = curve_fit(smooth, all_freq[ordered], all_dk_freq[ordered], 
+                                            p0=first_guess(smooth), sigma=all_dk_freq_cov[ordered], 
+                                            absolute_sigma=True, maxfev=maxfev)
+        residuals = all_dk_freq[ordered] - smooth(all_freq[ordered], *p_smooth)
+        
+        # Fit of the residuals using the glitch model
+        p_glitch, p_glitch_cov = curve_fit(glitch, all_freq[ordered], residuals, 
+                                            p0=first_guess(glitch), sigma=all_dk_freq_cov[ordered], 
+                                            absolute_sigma=True, maxfev=maxfev)
+        
+        # The best solution is then used as a first guess for the complete fit (smooth + glitch)
+        x0 = np.concatenate((p_glitch, p_smooth))
     
-    # # Minimisation
+    # Fit of the complete model
+    p_mod, p_mod_cov = curve_fit(model, all_freq[ordered], all_dk_freq[ordered], 
+                                 p0=x0, sigma=all_dk_freq_cov[ordered],
+                                 absolute_sigma=True, maxfev=maxfev)
+    
+    print('Best parameter set : ', *zip(np.concatenate((glitch.__code__.co_varnames[1:],
+                                                        smooth.__code__.co_varnames[1:])),
+                                        np.round(p_mod, 5)))
+    dk_freq_mod = model(freq, *p_mod)
+    
+    # Comparison of the fitted expression with the data
+    plot_diagnostic(freq, dk_freq, dk_freq_cov, dk_freq_mod, show=True)
+    
+    
+    # # Definition of a cost function
+    # cost_func = lambda params: - log_prior(glitch, *params[:glitch.__code__.co_argcount-1]) \
+    #                             - log_prior(smooth, *params[glitch.__code__.co_argcount-1:]) \
+    #                             - log_likelihood(freq, dk_freq, dk_freq_cov, model, *params)
+    
+    # # Minimisation using a log posterior function
     # res = minimize(cost_func, x0, method='Powell', tol=1e-4, options={'maxiter': 1000, 'apdative':True})
     # print('Best parameter set : ', *zip(np.concatenate((glitch.__code__.co_varnames[1:],
     #                                                     smooth.__code__.co_varnames[1:])),
     #                                     np.round(res.x, 3)))
     # dk_freq_mod = model(freq, *res.x)
     # plot_diagnostic(freq, dk_freq, dk_freq_cov, dk_freq_mod, show=True)
-    
-    # Minimisation using curve_fit
-    Two_fits = True
-    all_freq = np.array(freq.loc[dk_freq.index]).flatten()
-    all_dk_freq = np.array(dk_freq).flatten()
-    all_dk_freq_cov = block_diag(*dk_freq_cov)
-    ordered = np.argsort(all_freq)
-    
-    if Two_fits:
-        p_smooth, p_smooth_cov = curve_fit(smooth, all_freq[ordered], all_dk_freq[ordered], 
-                                            p0=first_guess(smooth), sigma=all_dk_freq_cov[ordered], 
-                                            absolute_sigma=True)
-        residuals = all_dk_freq[ordered] - smooth(all_freq[ordered], *p_smooth)
-        p_glitch, p_glitch_cov = curve_fit(glitch, all_freq[ordered], residuals, 
-                                            p0=first_guess(glitch), sigma=all_dk_freq_cov[ordered], 
-                                            absolute_sigma=True)
-        x0 = np.concatenate((p_glitch, p_smooth))
-        # dk_freq_glitch = np.array(glitch(freq, *p_glitch)).flatten()
-        # dk_freq_smooth = np.array(smooth(freq, *p_smooth)).flatten()
-        # dk_freq_model  = np.array(model(freq, *p_mod)).flatten()
-        # print('Best parameter set : ', *zip(np.concatenate((glitch.__code__.co_varnames[1:],
-        #                                                     smooth.__code__.co_varnames[1:])),
-        #                                     np.round(p_mod, 5)))
-        # plot_diagnostic(freq, dk_freq, dk_freq_cov, show=False)
-        # for fit, style, label in zip([dk_freq_glitch, dk_freq_smooth, dk_freq_model],
-        #                               ['k--', 'k:', 'k-'], ['Glitch', 'Smooth', 'Model']):
-        #     plt.plot(all_freq[ordered], fit[ordered], style, label=label)
-        # plt.show()
-    
-    
-    p_mod, p_mod_cov = curve_fit(model, all_freq[ordered], all_dk_freq[ordered], 
-                                 p0=x0, sigma=all_dk_freq_cov[ordered], absolute_sigma=True)
-    print('Best parameter set : ', *zip(np.concatenate((glitch.__code__.co_varnames[1:],
-                                                        smooth.__code__.co_varnames[1:])),
-                                        np.round(p_mod, 5)))
-    dk_freq_mod = model(freq, *p_mod)
-    plot_diagnostic(freq, dk_freq, dk_freq_cov, dk_freq_mod, show=True)
     
 #============================================================================#
