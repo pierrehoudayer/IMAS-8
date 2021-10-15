@@ -77,10 +77,11 @@ def plot_diagnostic(f, dk_f, dk_f_cov, dk_f_mod=None, show=False):
         plt.errorbar(f.loc[dk_f[l_name].index, l_name], dk_f[l_name], yerr=np.diag(dk_f_cov_l)**0.5,
                     fmt=m_l, color=c_l, alpha=0.3, label=r"$\ell = "+l_name[-1]+"$")
     if dk_f_mod is not None:
+        res = 1000
         all_f = np.array(f).flatten()
         ordered = np.argsort(all_f)
-        all_mod = np.array(dk_f_mod).flatten()
-        plt.plot(all_f[ordered], all_mod[ordered], 'g-', alpha = 0.5, label="Model")
+        f_long = np.linspace(all_f[ordered][0], all_f[ordered][-1], res)
+        plt.plot(f_long, dk_f_mod, 'g-', alpha = 0.5, label="Model")
     plt.legend()
     if show: plt.show()
 #============================================================================#
@@ -302,7 +303,8 @@ if __name__=='__main__':
     print('Best parameter set : ', *zip(np.concatenate((glitch.__code__.co_varnames[1:],
                                                         smooth.__code__.co_varnames[1:])),
                                         np.round(p_mod, 5)))
-    dk_freq_mod = model(freq, *p_mod)
+    freq_long = np.linspace(all_freq[ordered][0], all_freq[ordered][-1], res)
+    dk_freq_mod = model(freq_long, *p_mod)
     
     # Comparison of the fitted expression with the data
     plot_diagnostic(freq, dk_freq, dk_freq_cov, dk_freq_mod, show=True)
