@@ -77,10 +77,10 @@ def plot_diagnostic(f, dk_f, dk_f_cov, dk_f_mod=None, show=False):
         plt.errorbar(f.loc[dk_f[l_name].index, l_name], dk_f[l_name], yerr=np.diag(dk_f_cov_l)**0.5,
                     fmt=m_l, color=c_l, alpha=0.3, label=r"$\ell = "+l_name[-1]+"$")
     if dk_f_mod is not None:
-        res = 1000
+        resolution = 1000
         all_f = np.array(f).flatten()
         ordered = np.argsort(all_f)
-        f_long = np.linspace(all_f[ordered][0], all_f[ordered][-1], res)
+        f_long = np.linspace(all_f[ordered][0], all_f[ordered][-1], resolution)
         plt.plot(f_long, dk_f_mod, 'g-', alpha = 0.5, label="Model")
     plt.legend()
     if show: plt.show()
@@ -91,34 +91,34 @@ def plot_diagnostic(f, dk_f, dk_f_cov, dk_f_mod=None, show=False):
 #============================================================================#
 #                               FITTING FUNCTIONS                            #
 #============================================================================#
-def M94a(f, a, τ, φ):
+def M94a(f, a, tau, phi):
     '''Expression of the frequency shift caused by the base of the convection
     zone (BCZ) in an overshoot model derived in Monteiro et al. (1994) and 
     reused in Vrard et al. (2015)'''
-    return (a/f) * np.cos(2*np.pi*f*τ+φ)
+    return (a/f) * np.cos(2*np.pi*f*tau+phi)
 
-def M94b(f, a, τ, φ):
+def M94b(f, a, tau, phi):
     '''Expression of the frequency shift caused by the base of the convection
     zone (BCZ) in a non-overshoot model derived in Monteiro et al. (1994) and 
     reused in Vrard et al. (2015) and Dréau et al. (2021)'''
-    return (a/f**2) * np.cos(2*np.pi*f*τ+φ)
+    return (a/f**2) * np.cos(2*np.pi*f*tau+phi)
 
-def MT98(f, a, b, τ, φ):
+def MT98(f, a, b, tau, phi):
     '''Expression of the frequency shift caused by the 2nd He ionisation
     derived in Monteiro & Thompson (1998) and used in Verma et al. (2014a)'''
-    return a * np.sin(np.pi*f*b)**2/(np.pi*f*b) * np.cos(2*np.pi*f*τ+φ)
+    return a * np.sin(np.pi*f*b)**2/(np.pi*f*b) * np.cos(2*np.pi*f*tau+phi)
 
-def HG07(f, a, b, τ, φ):
+def HG07(f, a, b, tau, phi):
     '''Expression of the frequency shift caused by the 2nd He ionisation
     derived in Houdek & Gough (2007)
     This expression were also applied to the second differences fit in 
     Verma et al. (2014a, 2019) and adapted in Farnir et al. (2019)'''
-    return (a*f) * np.exp(-(b*f)**2) * np.cos(2*np.pi*f*τ+φ)
+    return (a*f) * np.exp(-(b*f)**2) * np.cos(2*np.pi*f*tau+phi)
 
-def V15(f, a, τ, φ):
+def V15(f, a, tau, phi):
     '''Expression of the frequency shift caused by the 2nd He ionisation
     used in Vrard et al. (2015)'''
-    return a * np.cos(2*np.pi*f*τ+φ)
+    return a * np.cos(2*np.pi*f*tau+phi)
 
 def Offset(f, a0):
     '''Just an offset to model the smooth component'''
@@ -127,6 +127,10 @@ def Offset(f, a0):
 def Inverse_polynomial(f, a0, a1, a2, a3):
     '''Expression of the smooth component introduced in Houdek & Gough (2007)'''
     return a0 + a1*f**-1 + a2*f**-2 + a3*f**-3
+
+def Polynomial(f, a0, a1, a2):
+    '''Expression of the smooth component introduced in Verma et al. (2014)'''
+    return a0 + a1*f**1 + a2*f**2
 
 def Asymptotic(k, f, a0, a1):
     '''Expression of the smooth component derived of the asymptotic 
@@ -153,6 +157,8 @@ def arg_types(func):
         return ['scale']
     if func == Inverse_polynomial:
         return ['scale', 'scale', 'scale', 'scale']
+    if func == Polynomial:
+        return ['scale', 'scale', 'scale']
     if (func == Asymptotic or type(func) is types.LambdaType):
         return ['scale', 'scale']
 #============================================================================#
@@ -183,11 +189,26 @@ def first_guess(func):
     x0 = []
     for kind in types:
         if kind == 'scale' :
-            x0.append(0.1)
+            if fname == 'freq_model_RGB.csv' or fname == 'freq_KIC_6277741_RGB.csv' :
+                x0.append(0.5)
+            elif fname == 'freq_model_MS.csv' or fname == 'freq_KIC_8379927_MS.csv' :
+                x0.append(0.1)
+            else :
+                x0.append(0.1)
         if kind == 'depth' :
-            x0.append(0.3)
+            if fname == 'freq_model_RGB.csv' or fname == 'freq_KIC_6277741_RGB.csv' :
+                x0.append(0.5)
+            elif fname == 'freq_model_MS.csv' or fname == 'freq_KIC_8379927_MS.csv' :
+                x0.append(0.3)
+            else :
+                x0.append(0.3)
         if kind == 'phase' :
-            x0.append(0.0)
+            if fname == 'freq_model_RGB.csv' or fname == 'freq_KIC_6277741_RGB.csv' :
+                x0.append(0.0)
+            elif fname == 'freq_model_MS.csv' or fname == 'freq_KIC_8379927_MS.csv' :
+                x0.append(0.0)
+            else :
+                x0.append(0.0)
     return np.array(x0)
         
     
@@ -229,12 +250,12 @@ def log_posterior(f, dk_f, dk_f_cov, func, *args):
 #============================================================================#
 if __name__=='__main__':
     # Name of the file containing the frequencies
-    fname = 'freq_model_RGB.csv'
+    fname = 'freq_KIC_8379927_MS.csv'
     
     # Maximum degree (<4) and radial orders considered
     l_max = 2
     n_min = 2
-    n_max = 20
+    n_max = 14
     
     # We consider a particular set of radial order to avoid NaNs
     # in the specific case of frequencies derived from data
@@ -258,13 +279,13 @@ if __name__=='__main__':
     
     
     # Diagnostic considered (d^k nu = k^th differences)
-    k = 0
+    k = 1                          # Different options: 0, 1, 2
     dk_freq, dk_freq_cov = dk(freq, freq_cov, k)
     
     
     # Definition of a model
-    glitch = HG07
-    smooth = Inverse_polynomial
+    glitch = V15                   # Different options: M94a, M94b, MT98, HG07, V15
+    smooth = Inverse_polynomial    # Different options: Offset, Polynomial, Inverse_polynomial
     # smooth = lambda f, a, b: Asymptotic(k, f, a, b)
     model  = lambda f, *params: glitch(f, *params[:glitch.__code__.co_argcount-1]) \
                               + smooth(f, *params[glitch.__code__.co_argcount-1:])
@@ -303,7 +324,8 @@ if __name__=='__main__':
     print('Best parameter set : ', *zip(np.concatenate((glitch.__code__.co_varnames[1:],
                                                         smooth.__code__.co_varnames[1:])),
                                         np.round(p_mod, 5)))
-    freq_long = np.linspace(all_freq[ordered][0], all_freq[ordered][-1], res)
+    resolution = 1000
+    freq_long = np.linspace(all_freq[ordered][0], all_freq[ordered][-1], resolution)
     dk_freq_mod = model(freq_long, *p_mod)
     
     # Comparison of the fitted expression with the data
