@@ -5,7 +5,7 @@
 
 # ***************************** Sets of frequencies ******************************
 
-    In this folder, you will find several sets of p-mode frequencies derived 
+In this folder, you will find several sets of p-mode frequencies derived 
 from observations and stellar models:
 
 
@@ -34,7 +34,7 @@ hidden on purpose.
 
 # ************************************ Script ************************************
 
-    We provide a script in python called [script.py] to analyse the 
+We provide a script in python called [script.py] to analyse the 
 modulation induced by the helium ionisation zones in mode frequencies. It is not 
 meant to be optimal, so do not hesitate to use your own code if you have any. 
 In order to run this python code, you need to install the following modules:
