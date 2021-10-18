@@ -26,7 +26,7 @@ model (Dnu = 120.9 muHz, M = 1.2 M_sun) computed from the stellar evolution code
 MESA and oscillation code ADIPLS. 
 
 - [freq1.csv], [freq2.csv], [freq3.csv] : dimensionless p-mode frequencies 
-(nunl / Dnu) of three MS model that includes the He ionisation zones only 
+(nunl / Dnu) of three MS model that includes the H & He ionisation zones only 
 (Houdayer et al., 2021). Between those models, three different pairs (Ys, psi) 
 have been chosen. Ys is the mass fraction of helium while psi is the electron 
 degeneracy at the Helium ionisation zones. The values of the pairs (Ys, psi) are 
