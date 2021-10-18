@@ -54,8 +54,8 @@ def dk(f, f_cov, k):
     if k == 0:
         dk_f = f.copy()
         dk_f_cov = f_cov.copy()
-        for l in range(f.shape[1]):
-            dk_f['l = {}'.format(l)] -= f['l = {}'.format(l)].index.values + l/2
+        # for l in range(f.shape[1]):
+        #     dk_f['l = {}'.format(l)] -= f['l = {}'.format(l)].index.values + l/2
         return dk_f, dk_f_cov
     if k == 1:
         a = [1,0,-1]       # Here we consider centered differences
@@ -170,8 +170,7 @@ def arg_types(func):
 #============================================================================#    
 def log_prior_on_scale(par):
     '''Return Jeffrey's prior on scale'''
-    # return -np.log(np.abs(par))
-    return 0.0
+    return -np.log(np.abs(par))
     
 
 def log_prior_on_depth(par, m, std):
@@ -184,28 +183,28 @@ def log_prior_on_phase(par):
     '''Return Jeffrey's prior on phase'''
     return 0.0
 
-def first_guess(func):
+def first_guess(func, fname):
     types = arg_types(func)
     x0 = []
     for kind in types:
         if kind == 'scale' :
-            if fname == 'freq_model_RGB.csv' or fname == 'freq_KIC_6277741_RGB.csv' :
+            if 'RGB' in fname:
                 x0.append(0.5)
-            elif fname == 'freq_model_MS.csv' or fname == 'freq_KIC_8379927_MS.csv' :
+            elif 'MS' in fname:
                 x0.append(0.1)
             else :
                 x0.append(0.1)
         if kind == 'depth' :
-            if fname == 'freq_model_RGB.csv' or fname == 'freq_KIC_6277741_RGB.csv' :
+            if 'RGB' in fname:
                 x0.append(0.5)
-            elif fname == 'freq_model_MS.csv' or fname == 'freq_KIC_8379927_MS.csv' :
+            elif 'MS' in fname:
                 x0.append(0.3)
             else :
                 x0.append(0.3)
         if kind == 'phase' :
-            if fname == 'freq_model_RGB.csv' or fname == 'freq_KIC_6277741_RGB.csv' :
+            if 'RGB' in fname:
                 x0.append(0.0)
-            elif fname == 'freq_model_MS.csv' or fname == 'freq_KIC_8379927_MS.csv' :
+            elif 'MS' in fname:
                 x0.append(0.0)
             else :
                 x0.append(0.0)
@@ -250,7 +249,7 @@ def log_posterior(f, dk_f, dk_f_cov, func, *args):
 #============================================================================#
 if __name__=='__main__':
     # Name of the file containing the frequencies
-    fname = 'freq_KIC_8379927_MS.csv'
+    fname = 'freq_KIC_6277741_RGB.csv'
     
     # Maximum degree (<4) and radial orders considered
     l_max = 2
@@ -279,7 +278,7 @@ if __name__=='__main__':
     
     
     # Diagnostic considered (d^k nu = k^th differences)
-    k = 1                          # Different options: 0, 1, 2
+    k = 2                          # Different options: 0, 1, 2
     dk_freq, dk_freq_cov = dk(freq, freq_cov, k)
     
     
@@ -297,20 +296,22 @@ if __name__=='__main__':
     ordered = np.argsort(all_freq)
     
     # Initial guess for our model
-    x0 = np.concatenate((first_guess(glitch), first_guess(smooth)))
+    x0 = np.concatenate((first_guess(glitch, fname),
+                         first_guess(smooth, fname)))
+    print(x0)
     maxfev = int(1e5)    
     Two_fits = True     # This option allows a first fit to determine a first guess
     
     if Two_fits:
         # Fit of the smooth component alone
         p_smooth, p_smooth_cov = curve_fit(smooth, all_freq[ordered], all_dk_freq[ordered], 
-                                            p0=first_guess(smooth), sigma=all_dk_freq_cov[ordered], 
+                                            p0=first_guess(smooth, fname), sigma=all_dk_freq_cov[ordered], 
                                             absolute_sigma=True, maxfev=maxfev)
         residuals = all_dk_freq[ordered] - smooth(all_freq[ordered], *p_smooth)
         
         # Fit of the residuals using the glitch model
         p_glitch, p_glitch_cov = curve_fit(glitch, all_freq[ordered], residuals, 
-                                            p0=first_guess(glitch), sigma=all_dk_freq_cov[ordered], 
+                                            p0=first_guess(glitch, fname), sigma=all_dk_freq_cov[ordered], 
                                             absolute_sigma=True, maxfev=maxfev)
         
         # The best solution is then used as a first guess for the complete fit (smooth + glitch)
