@@ -77,7 +77,7 @@ def plot_diagnostic(f, dk_f, dk_f_cov, dk_f_mod=None, show=False):
         plt.errorbar(f.loc[dk_f[l_name].index, l_name], dk_f[l_name], yerr=np.diag(dk_f_cov_l)**0.5,
                     fmt=m_l, color=c_l, alpha=0.3, label=r"$\ell = "+l_name[-1]+"$")
     if dk_f_mod is not None:
-        resolution = 1000
+        resolution = len(dk_f_mod)
         all_f = np.array(f).flatten()
         ordered = np.argsort(all_f)
         f_long = np.linspace(all_f[ordered][0], all_f[ordered][-1], resolution)
@@ -257,7 +257,7 @@ if __name__=='__main__':
     n_max = 40
     
     # We consider a particular set of radial order to avoid NaNs
-    # in the specific case of frequencies derived from data
+    # in the specific case of frequencies extracted from data
     if fname == 'freq_KIC_6277741_RGB.csv':
         n_min = 5
         n_max = 9 
