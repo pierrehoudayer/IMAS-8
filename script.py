@@ -249,12 +249,12 @@ def log_posterior(f, dk_f, dk_f_cov, func, *args):
 #============================================================================#
 if __name__=='__main__':
     # Name of the file containing the frequencies
-    fname = 'freq_KIC_6277741_RGB.csv'
+    fname = 'freq1.csv'
     
     # Maximum degree (<4) and radial orders considered
     l_max = 2
-    n_min = 2
-    n_max = 14
+    n_min = 10
+    n_max = 40
     
     # We consider a particular set of radial order to avoid NaNs
     # in the specific case of frequencies derived from data
@@ -283,13 +283,13 @@ if __name__=='__main__':
     
     
     # Definition of a model
-    glitch = V15                   # Different options: M94a, M94b, MT98, HG07, V15
+    glitch = HG07                   # Different options: M94a, M94b, MT98, HG07, V15
     smooth = Inverse_polynomial    # Different options: Offset, Polynomial, Inverse_polynomial
     # smooth = lambda f, a, b: Asymptotic(k, f, a, b)
     model  = lambda f, *params: glitch(f, *params[:glitch.__code__.co_argcount-1]) \
                               + smooth(f, *params[glitch.__code__.co_argcount-1:])
     
-    # Minimisation using curve_fit
+    # Merging frequencies, diagnostics and covariance matrices of all degrees
     all_freq = np.array(freq.loc[dk_freq.index]).flatten()
     all_dk_freq = np.array(dk_freq).flatten()
     all_dk_freq_cov = block_diag(*dk_freq_cov)
@@ -298,8 +298,7 @@ if __name__=='__main__':
     # Initial guess for our model
     x0 = np.concatenate((first_guess(glitch, fname),
                          first_guess(smooth, fname)))
-    print(x0)
-    maxfev = int(1e5)    
+    maxfev = int(1e5)   # This option determine the maximum number of curvefit iterations
     Two_fits = True     # This option allows a first fit to determine a first guess
     
     if Two_fits:
