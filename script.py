@@ -328,6 +328,12 @@ if __name__=='__main__':
     freq_long = np.linspace(all_freq[ordered][0], all_freq[ordered][-1], resolution)
     dk_freq_mod = model(freq_long, *p_mod)
     
+    # Chi2 estimate
+    residuals = all_dk_freq[ordered] - model(all_freq[ordered], *p_mod)
+    print('Chi2 = ', np.dot(
+        np.dot(residuals.T, np.linalg.inv(all_dk_freq_cov[ordered])),residuals)
+        /(len(residuals)-model.__code__.co_argcount))
+    
     # Comparison of the fitted expression with the data
     plot_diagnostic(freq, dk_freq, dk_freq_cov, dk_freq_mod, show=True)
     
