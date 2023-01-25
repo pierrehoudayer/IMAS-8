@@ -32,20 +32,27 @@ rc('ytick', labelsize=15)
 def read_freq(fname, l_max, n_min, n_max):
     '''Return the frequencies contained in fname with 
     l <= l_max, n_min <= n <= n_max'''
-    return pd.read_csv(fname, index_col=0, usecols=range(l_max+2), na_values=-99.9999).loc[n_min:n_max]
+    return pd.read_csv(
+        fname, index_col=0, usecols=range(l_max+2), na_values=-99.9999
+    ).loc[n_min:n_max]
 
 def read_freq_cov(fname, l_max, n_min, n_max):
     '''Return the covariance matrices (1 per degree)
     contained in fname with l <= l_max, n_min <= n <= n_max'''
     return np.array([
-        np.diag(pd.read_csv(fname, index_col=0, usecols=[0,4+l], na_values=-9.9999)
-            .loc[n_min:n_max].values.reshape((n_max-n_min+1))**2) for l in range(l_max+1)
+        np.diag(
+            pd.read_csv(
+                    fname, index_col=0, usecols=[0,4+l], na_values=-9.9999
+                ).loc[n_min:n_max].values.reshape((n_max-n_min+1))**2
+            ) for l in range(l_max+1)
         ])
 
 def generate_freq_cov(sig, l_max, n_min, n_max):
     '''Genrerate the covariance matrices (1 per degree)
     using a single dispersion value (sig) with l <= l_max, n_min <= n <= n_max'''
-    return np.array([sig**2*np.eye(n_max-n_min+1) for l in range(l_max+1)])
+    return np.array(
+        [sig**2*np.eye(n_max-n_min+1) for l in range(l_max+1)]
+    )
 
 
 def dk(f, f_cov, k):
@@ -64,9 +71,17 @@ def dk(f, f_cov, k):
         
     q = len(a)//2
     dimA = len(f)
-    A = sum(np.diag(np.flip(a)[i]*np.ones(dimA-np.abs(i-q))/2**k,i-q) for i in range(len(a)))
-    dk_f     = pd.DataFrame(np.dot(A, f)[q:-q], index=f.index[q:-q], columns=f.columns)
-    dk_f_cov = np.array([np.dot(np.dot(A,f_cov_l),A.T)[q:-q,q:-q] for f_cov_l in f_cov])
+    A = sum(
+        np.diag(
+            np.flip(a)[i]*np.ones(dimA-np.abs(i-q))/2**k, i-q
+        ) for i in range(len(a))
+    )
+    dk_f     = pd.DataFrame(
+        np.dot(A, f)[q:-q], index=f.index[q:-q], columns=f.columns
+    )
+    dk_f_cov = np.array(
+        [((A @ f_cov_l) @ A.T)[q:-q,q:-q] for f_cov_l in f_cov]
+    )
     return dk_f, dk_f_cov
 
 def plot_diagnostic(f, dk_f, dk_f_cov, dk_f_mod=None, show=False): 
@@ -74,14 +89,17 @@ def plot_diagnostic(f, dk_f, dk_f_cov, dk_f_mod=None, show=False):
     colors = ['k', 'r', 'b']
     markers = ['v', 'd', '*']
     for l_name, dk_f_cov_l, m_l, c_l in zip(f, dk_f_cov, markers, colors): 
-        plt.errorbar(f.loc[dk_f[l_name].index, l_name], dk_f[l_name], yerr=np.diag(dk_f_cov_l)**0.5,
-                    fmt=m_l, color=c_l, alpha=0.3, label=r"$\ell = "+l_name[-1]+"$")
+        plt.errorbar(
+            f.loc[dk_f[l_name].index, l_name], dk_f[l_name], 
+            yerr=np.diag(dk_f_cov_l)**0.5, fmt=m_l, color=c_l, 
+            alpha=0.2, label=r"$\ell = "+l_name[-1]+"$"
+        )
     if dk_f_mod is not None:
         resolution = len(dk_f_mod)
         all_f = np.array(f).flatten()
         ordered = np.argsort(all_f)
         f_long = np.linspace(all_f[ordered][0], all_f[ordered][-1], resolution)
-        plt.plot(f_long, dk_f_mod, 'g-', alpha = 0.5, label="Model")
+        plt.plot(f_long, dk_f_mod, 'k-', alpha = 0.5, label="Model")
     plt.legend()
     if show: plt.show()
 #============================================================================#
@@ -296,43 +314,53 @@ if __name__=='__main__':
     ordered = np.argsort(all_freq)
     
     # Initial guess for our model
-    x0 = np.concatenate((first_guess(glitch, fname),
-                         first_guess(smooth, fname)))
+    x0 = np.concatenate(
+        (first_guess(glitch, fname), first_guess(smooth, fname))
+    )
     maxfev = int(1e5)   # This option determine the maximum number of curvefit iterations
     Two_fits = True     # This option allows a first fit to determine a first guess
     
     if Two_fits:
         # Fit of the smooth component alone
-        p_smooth, p_smooth_cov = curve_fit(smooth, all_freq[ordered], all_dk_freq[ordered], 
-                                            p0=first_guess(smooth, fname), sigma=all_dk_freq_cov[ordered], 
-                                            absolute_sigma=True, maxfev=maxfev)
+        p_smooth, p_smooth_cov = curve_fit(
+            smooth, all_freq[ordered], all_dk_freq[ordered], 
+            p0=first_guess(smooth, fname), sigma=all_dk_freq_cov[ordered], 
+            absolute_sigma=True, maxfev=maxfev
+        )
         residuals = all_dk_freq[ordered] - smooth(all_freq[ordered], *p_smooth)
         
         # Fit of the residuals using the glitch model
-        p_glitch, p_glitch_cov = curve_fit(glitch, all_freq[ordered], residuals, 
-                                            p0=first_guess(glitch, fname), sigma=all_dk_freq_cov[ordered], 
-                                            absolute_sigma=True, maxfev=maxfev)
+        p_glitch, p_glitch_cov = curve_fit(
+            glitch, all_freq[ordered], residuals, 
+            p0=first_guess(glitch, fname), sigma=all_dk_freq_cov[ordered], 
+            absolute_sigma=True, maxfev=maxfev
+        )
         
         # The best solution is then used as a first guess for the complete fit (smooth + glitch)
         x0 = np.concatenate((p_glitch, p_smooth))
     
     # Fit of the complete model
-    p_mod, p_mod_cov = curve_fit(model, all_freq[ordered], all_dk_freq[ordered], 
-                                 p0=x0, sigma=all_dk_freq_cov[ordered],
-                                 absolute_sigma=True, maxfev=maxfev)
+    p_mod, p_mod_cov = curve_fit(
+        model, all_freq[ordered], all_dk_freq[ordered], 
+        p0=x0, sigma=all_dk_freq_cov[ordered],
+        absolute_sigma=True, maxfev=maxfev
+    )
     
-    print('Best parameter set : ', *zip(np.concatenate((glitch.__code__.co_varnames[1:],
-                                                        smooth.__code__.co_varnames[1:])),
-                                        np.round(p_mod, 5)))
+    print('Best parameter set : ', *zip(
+        np.concatenate(
+            (glitch.__code__.co_varnames[1:], smooth.__code__.co_varnames[1:])
+        ), np.round(p_mod, 5)
+    ))
     resolution = 1000
     freq_long = np.linspace(all_freq[ordered][0], all_freq[ordered][-1], resolution)
     dk_freq_mod = model(freq_long, *p_mod)
     
     # Chi2 estimate
     residuals = all_dk_freq[ordered] - model(all_freq[ordered], *p_mod)
-    print('Chi2 = ', np.dot(
-        np.dot(residuals.T, np.linalg.inv(all_dk_freq_cov[ordered])),residuals)
-        /(len(residuals)-model.__code__.co_argcount))
+    print(
+        'Chi2 = ', ((residuals.T @ np.linalg.inv(all_dk_freq_cov[ordered])) @ residuals)
+        / (len(residuals)-model.__code__.co_argcount)
+    )
     
     # Comparison of the fitted expression with the data
     plot_diagnostic(freq, dk_freq, dk_freq_cov, dk_freq_mod, show=True)
