@@ -30,7 +30,7 @@ have been chosen. Ys is the mass fraction of helium while psi is the electron
 degeneracy at the Helium ionisation zones. The values of the pairs (Ys, psi) are 
 hidden on purpose. 
 
-#  Script 
+##  Script 
 
 We provide a script in python called *[script.py]* to analyse the 
 modulation induced by the helium ionisation zones in mode frequencies. It is not 
@@ -57,6 +57,6 @@ modulation, [phase] is for the phase, and [scale] is for the remaining parameter
 	If you have any difficulty to run this code, please do not hesitate to
 contact us.
 
-# *@authors* 
+## *@authors* 
 [Guillaume Dréau] & [Pierre Houdayer]
 [guillaume.dreau@obspm.fr], [pierre.houdayer@obspm.fr]
